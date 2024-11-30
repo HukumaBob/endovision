@@ -1,0 +1,1 @@
+python video_processing_live.py video/input.mpg model/best.pt output.mpg --classes model/tags.json
