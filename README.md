@@ -59,7 +59,7 @@ A PyQt5 application for processing videos using a YOLO model. This tool allows y
 ## Directory Structure
 
 ```
-yolo-video-processor/
+endovision/
 │
 ├── main.py               # Application entry point
 ├── ui.py                 # UI components and layout
