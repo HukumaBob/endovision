@@ -8,13 +8,18 @@ from ultralytics import YOLO
 import cv2
 
 
-class VideoProcessorApp(QMainWindow):
+class VideoProcessorUI(QMainWindow):
+    """
+    Main application class for video processing with YOLO model.
+    Provides a user interface for selecting files, starting video processing, and previewing the output.
+    """
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Видеообработка с YOLO")
+        self.setWindowTitle("Video Processing with YOLO")
         self.setGeometry(200, 200, 800, 600)
         self.init_ui()
 
+        # Initialize processing components
         self.timer = QTimer()
         self.cap = None
         self.model = None
@@ -22,38 +27,39 @@ class VideoProcessorApp(QMainWindow):
         self.class_names = None
 
     def init_ui(self):
+        """Initializes the user interface."""
         main_widget = QWidget(self)
         main_layout = QVBoxLayout(main_widget)
 
-        # Создаем секцию для выбора файлов
-        input_group = self.create_group_box("Входные данные", [
-            self.create_file_row("Выберите видеофайл...", "input_path", "Выбрать видео"),
-            self.create_file_row("Выберите модель YOLO...", "model_path", "Выбрать модель"),
-            self.create_file_row("JSON с именами классов (необязательно)...", "classes_path", "Выбрать JSON"),
+        # Input files section
+        input_group = self.create_group_box("Input Files", [
+            self.create_file_row("Select a video file...", "input_path", "Choose Video"),
+            self.create_file_row("Select a YOLO model file...", "model_path", "Choose Model"),
+            self.create_file_row("JSON with class names (optional)...", "classes_path", "Choose JSON"),
         ])
 
-        # Создаем секцию для вывода
-        output_group = self.create_group_box("Результат", [
-            self.create_file_row("Укажите путь для сохранения результата...", "output_path", "Сохранить в..."),
+        # Output files section
+        output_group = self.create_group_box("Output", [
+            self.create_file_row("Specify the output file path...", "output_path", "Save As..."),
         ])
 
-        # Кнопка запуска
-        self.process_btn = QPushButton("Запустить обработку")
+        # Start processing button
+        self.process_btn = QPushButton("Start Processing")
         self.process_btn.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.process_btn.clicked.connect(self.start_processing)
 
-        # Предпросмотр видео
-        self.video_label = QLabel("Предпросмотр видео", self)
+        # Video preview label
+        self.video_label = QLabel("Video Preview", self)
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setStyleSheet("background-color: black;")
         self.video_label.setFixedSize(640, 480)
 
-        # Статус
+        # Status label
         self.status_label = QLabel("", self)
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet("color: green; font-size: 12px;")
 
-        # Добавляем элементы на главный компоновщик
+        # Add components to the main layout
         main_layout.addWidget(input_group)
         main_layout.addWidget(output_group)
         main_layout.addWidget(self.process_btn)
@@ -63,7 +69,13 @@ class VideoProcessorApp(QMainWindow):
         self.setCentralWidget(main_widget)
 
     def create_group_box(self, title, rows):
-        """Создает QGroupBox с набором строк (компонентов)."""
+        """
+        Creates a group box with a given title and rows of widgets.
+
+        :param title: Title of the group box.
+        :param rows: List of layouts (rows) to add to the group box.
+        :return: QGroupBox with the specified rows.
+        """
         group_box = QGroupBox(title)
         layout = QVBoxLayout()
         for row in rows:
@@ -72,15 +84,22 @@ class VideoProcessorApp(QMainWindow):
         return group_box
 
     def create_file_row(self, placeholder, attr_name, btn_text):
-        """Создает горизонтальную строку с текстовым полем и кнопкой."""
+        """
+        Creates a horizontal layout with a text input and a button for file selection.
+
+        :param placeholder: Placeholder text for the QLineEdit.
+        :param attr_name: Attribute name for storing the QLineEdit.
+        :param btn_text: Button text.
+        :return: QHBoxLayout containing the QLineEdit and QPushButton.
+        """
         layout = QHBoxLayout()
 
-        # Создаем текстовое поле
+        # Create a text input field
         line_edit = QLineEdit()
         line_edit.setPlaceholderText(placeholder)
         setattr(self, attr_name, line_edit)
 
-        # Создаем кнопку
+        # Create a button for file selection
         button = QPushButton(btn_text)
         button.clicked.connect(lambda: self.select_file(line_edit, placeholder, attr_name))
         layout.addWidget(line_edit)
@@ -89,7 +108,13 @@ class VideoProcessorApp(QMainWindow):
         return layout
 
     def select_file(self, line_edit, placeholder, attr_name):
-        """Открывает диалог выбора файла."""
+        """
+        Opens a file dialog to select a file or directory.
+
+        :param line_edit: QLineEdit to update with the selected file path.
+        :param placeholder: Dialog title.
+        :param attr_name: Attribute name for the associated input field.
+        """
         if attr_name == "output_path":
             path, _ = QFileDialog.getSaveFileName(self, placeholder, "", "*.mp4 *.avi *.webm")
         else:
@@ -98,39 +123,43 @@ class VideoProcessorApp(QMainWindow):
             line_edit.setText(path)
 
     def start_processing(self):
-        """Инициализация обработки видео."""
+        """
+        Initializes video processing using the selected files and starts processing frames.
+        """
         input_path = self.input_path.text()
         model_path = self.model_path.text()
         output_path = self.output_path.text()
         classes_path = self.classes_path.text()
 
         if not input_path or not model_path or not output_path:
-            self.status_label.setText("Ошибка: Заполните все обязательные поля!")
+            self.status_label.setText("Error: Please fill in all required fields!")
             return
 
         self.class_names = load_classes(classes_path)
         self.model = YOLO(model_path)
 
-        # Инициализация обработки видео
+        # Initialize video processing
         self.cap, self.writer = init_video_processing(input_path, output_path)
         if not self.cap or not self.writer:
-            self.status_label.setText("Ошибка: не удалось открыть видео или создать файл!")
+            self.status_label.setText("Error: Failed to open video or create file!")
             return
 
         self.timer.timeout.connect(self.process_frame)
         self.timer.start(int(1000 / self.cap.get(cv2.CAP_PROP_FPS)))
-        self.status_label.setText("Обработка видео началась...")
+        self.status_label.setText("Video processing started...")
 
     def process_frame(self):
-        """Обработка кадра и обновление интерфейса."""
+        """
+        Processes a single video frame, updates the UI, and handles video completion.
+        """
         frame, finished = process_frame(self.cap, self.model, self.writer, self.class_names)
         if finished:
             self.timer.stop()
             finalize_processing(self.cap, self.writer)
-            self.status_label.setText(f"Обработка завершена! Файл сохранён: {self.output_path.text()}")
+            self.status_label.setText(f"Processing complete! File saved at: {self.output_path.text()}")
             return
 
-        # Отображение обработанного кадра в QLabel
+        # Update video preview
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
