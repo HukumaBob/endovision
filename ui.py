@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPixmap, QImage
 from video_processor import init_video_processing, process_frame, finalize_processing, load_classes
 from ultralytics import YOLO
 import cv2
+import os
 
 
 class VideoProcessorUI(QMainWindow):
@@ -33,14 +34,13 @@ class VideoProcessorUI(QMainWindow):
 
         # Input files section
         input_group = self.create_group_box("Input Files", [
-            self.create_file_row("Select a video file...", "input_path", "Choose Video"),
-            self.create_file_row("Select a YOLO model file...", "model_path", "Choose Model"),
-            self.create_file_row("JSON with class names (optional)...", "classes_path", "Choose JSON"),
+            self.create_file_row("Select a video file...", "input_path", "Choose Video", "*.mp4 *.mpg *.avi *.webm"),
+            self.create_file_row("Select a YOLO model file...", "model_path", "Choose Model", "*.pt"),
         ])
 
         # Output files section
         output_group = self.create_group_box("Output", [
-            self.create_file_row("Specify the output file path...", "output_path", "Save As..."),
+            self.create_file_row("Specify the output file path...", "output_path", "Save As...", "*.mp4"),
         ])
 
         # Start processing button
@@ -83,13 +83,14 @@ class VideoProcessorUI(QMainWindow):
         group_box.setLayout(layout)
         return group_box
 
-    def create_file_row(self, placeholder, attr_name, btn_text):
+    def create_file_row(self, placeholder, attr_name, btn_text, file_filter="*"):
         """
         Creates a horizontal layout with a text input and a button for file selection.
 
         :param placeholder: Placeholder text for the QLineEdit.
         :param attr_name: Attribute name for storing the QLineEdit.
         :param btn_text: Button text.
+        :param file_filter: File type filter for the file dialog.
         :return: QHBoxLayout containing the QLineEdit and QPushButton.
         """
         layout = QHBoxLayout()
@@ -101,26 +102,36 @@ class VideoProcessorUI(QMainWindow):
 
         # Create a button for file selection
         button = QPushButton(btn_text)
-        button.clicked.connect(lambda: self.select_file(line_edit, placeholder, attr_name))
+        button.clicked.connect(lambda: self.select_file(line_edit, placeholder, attr_name, file_filter))
         layout.addWidget(line_edit)
         layout.addWidget(button)
 
         return layout
 
-    def select_file(self, line_edit, placeholder, attr_name):
+    def select_file(self, line_edit, placeholder, attr_name, file_filter):
         """
-        Opens a file dialog to select a file or directory.
+        Opens a file dialog to select a file or specify a save path.
 
         :param line_edit: QLineEdit to update with the selected file path.
         :param placeholder: Dialog title.
         :param attr_name: Attribute name for the associated input field.
+        :param file_filter: File type filter for the file dialog.
         """
         if attr_name == "output_path":
-            path, _ = QFileDialog.getSaveFileName(self, placeholder, "", "*.mp4 *.avi *.webm")
+            # Allow specifying a new file for saving
+            path, _ = QFileDialog.getSaveFileName(self, placeholder, "", file_filter)
         else:
-            path, _ = QFileDialog.getOpenFileName(self, placeholder, "", "*.mp4 *.avi *.webm *.pt *.json")
+            # Allow selecting existing files
+            path, _ = QFileDialog.getOpenFileName(self, placeholder, "", file_filter)
+        
         if path:
             line_edit.setText(path)
+            if attr_name == "model_path":
+                # Automatically find the corresponding JSON file if it exists
+                model_dir, model_name = os.path.split(path)
+                json_path = os.path.join(model_dir, f"{os.path.splitext(model_name)[0]}.json")
+                if os.path.exists(json_path):
+                    self.class_names = load_classes(json_path)
 
     def start_processing(self):
         """
@@ -129,13 +140,15 @@ class VideoProcessorUI(QMainWindow):
         input_path = self.input_path.text()
         model_path = self.model_path.text()
         output_path = self.output_path.text()
-        classes_path = self.classes_path.text()
 
         if not input_path or not model_path or not output_path:
             self.status_label.setText("Error: Please fill in all required fields!")
             return
 
-        self.class_names = load_classes(classes_path)
+        if not self.class_names:
+            self.status_label.setText("Error: Corresponding JSON file not found!")
+            return
+
         self.model = YOLO(model_path)
 
         # Initialize video processing

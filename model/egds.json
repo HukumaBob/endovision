@@ -1,28 +1,40 @@
 {
     "anatomy": {
-        "0": "corpus ventriculi_retro",
-        "1": "antrum",
-        "2": "pylorus",
-        "4": "angulus ventriculi",
-        "5": "tongue",
-        "6": "palate",
-        "7": "oesophagus",
-        "9": "corpus_ventriculi",
-        "11": "ampulla_duodeni",
-        "12": "larinx",
-        "13": "vocal_cord",
-        "14": "epiglottis",
-        "15": "pharynx",
-        "16": "mouthpiece",
-        "17": "teeth",
-        "18": "aryepiglottic_fold",
-        "19": "endoscope",
-        "20": "cardia",
-        "21": "post_bulbus_duodenum"
+        "0": "larinx",
+        "1": "vocal_cord",
+        "2": "epiglottis",
+        "3": "pylorus",
+        "4": "post_bulbus_duodenum",
+        "6": "oesophagus",
+        "7": "antrum",
+        "9": "fundus",
+        "10": "cardia",
+        "11": "corpus ventriculi_retro",
+        "12": "corpus_ventriculi",
+        "13": "pharynx",
+        "14": "angulus ventriculi",
+        "15": "aryepiglottic_fold",
+        "17": "ampulla_duodeni",
+        "18": "curvatura_major",
+        "20": "inlet_patch",
+        "25": "gastroesophageal_junction",
+        "26": "tongue",
+        "27": "palate",
+        "29": "z_line",
+        "30": "teeth"
     },
     "quality": {
-        "3": "foam",
-        "8": "close_focus",
-        "10": "dirty_optic"
+        "5": "close_focus",
+        "16": "foam",
+        "19": "liquor",
+        "23": "dirty_optic",
+        "24": "outside_the_body",
+        "31": "bad_picture"
+    },
+    "artifacts": {
+        "8": "endoscope",
+        "21": "forcept",
+        "22": "water_jet",
+        "28": "mouthpiece"
     }
 }

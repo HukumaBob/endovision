@@ -45,7 +45,8 @@ def process_frame(cap, model, writer, class_names):
     category_colors = {
         "anatomy": (0, 255, 0),   # Green
         "findings": (0, 0, 255), # Red
-        "quality": (0, 255, 255) # Yellow
+        "quality": (0, 255, 255), # Yellow
+        "artifacts": (255, 0, 0), # Blue
     }
 
     # Flatten class names into a lookup table {class_id: (category, class_name)}
