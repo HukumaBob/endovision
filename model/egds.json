@@ -1,24 +1,28 @@
-[
-    "corpus ventriculi_retro",
-    "antrum",
-    "pylorus",
-    "foam",
-    "angulus ventriculi",
-    "tongue",
-    "palate",
-    "oesophagus",
-    "close_focus",
-    "corpus_ventriculi",
-    "dirty_optic",
-    "ampulla_duodeni",
-    "larinx",
-    "vocal_cord",
-    "epiglottis",
-    "pharynx",
-    "mouthpiece",
-    "teeth",
-    "aryepiglottic_fold",
-    "endoscope",
-    "cardia",
-    "post_bulbus_duodenum"
-]
+{
+    "anatomy": {
+        "0": "corpus ventriculi_retro",
+        "1": "antrum",
+        "2": "pylorus",
+        "4": "angulus ventriculi",
+        "5": "tongue",
+        "6": "palate",
+        "7": "oesophagus",
+        "9": "corpus_ventriculi",
+        "11": "ampulla_duodeni",
+        "12": "larinx",
+        "13": "vocal_cord",
+        "14": "epiglottis",
+        "15": "pharynx",
+        "16": "mouthpiece",
+        "17": "teeth",
+        "18": "aryepiglottic_fold",
+        "19": "endoscope",
+        "20": "cardia",
+        "21": "post_bulbus_duodenum"
+    },
+    "quality": {
+        "3": "foam",
+        "8": "close_focus",
+        "10": "dirty_optic"
+    }
+}

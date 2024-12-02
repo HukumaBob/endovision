@@ -1,4 +1,8 @@
-[
-    "adenoma",
-    "colon_transversum"
-]
+{
+    "findings": {
+        "0": "adenoma"
+    },
+    "anatomy": {
+        "1": "colon_transversum"
+    }
+}
