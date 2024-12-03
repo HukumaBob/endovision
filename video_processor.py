@@ -2,6 +2,8 @@ import os
 import json
 import cv2
 
+from box_style import DashedBox, Ellipse, RoundedBox
+
 
 def init_video_processing(input_path: str, output_path: str):
     """
@@ -29,11 +31,10 @@ def init_video_processing(input_path: str, output_path: str):
 
     return cap, writer
 
-import cv2
 
 def process_frame(cap, model, writer, class_names):
     """
-    Processes a single video frame with category-based bounding box colors.
+    Processes a single video frame with category-based bounding box styles.
 
     :param cap: VideoCapture object for reading the video.
     :param model: Loaded YOLO model.
@@ -41,15 +42,15 @@ def process_frame(cap, model, writer, class_names):
     :param class_names: Dictionary mapping categories to class indices and names.
     :return: Tuple (processed frame, completion flag).
     """
-    # Define category colors
-    category_colors = {
-        "anatomy": (0, 255, 0),   # Green
-        "findings": (0, 0, 255), # Red
-        "quality": (0, 255, 255), # Yellow
-        "artifacts": (255, 0, 0), # Blue
+    # Define styles for categories
+    category_styles = {
+        "anatomy": RoundedBox(color=(0, 255, 0)),      # Green rounded box
+        "findings": Ellipse(color=(0, 0, 255)),     # Red dashed box
+        "quality": DashedBox(color=(0, 255, 255)),      # Yellow ellipse
+        "artifacts": Ellipse(color=(255, 0, 0))    # Blue rounded box
     }
 
-    # Flatten class names into a lookup table {class_id: (category, class_name)}
+    # Flatten class names into a lookup table
     class_lookup = {}
     for category, classes in class_names.items():
         for class_id, class_name in classes.items():
@@ -71,22 +72,14 @@ def process_frame(cap, model, writer, class_names):
             # Lookup class name and category
             category, class_name = class_lookup.get(cls, ("Unknown", "Unknown"))
 
-            # Determine the box color based on category
-            box_color = category_colors.get(category, (255, 255, 255))  # Default white for unknown category
-
-            # Draw the bounding box
-            cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
-            
-            # Add class name and confidence to the frame
-            cv2.putText(frame, f"{class_name} {confidence:.2f}%", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
+            # Determine the style and draw
+            style = category_styles.get(category, RoundedBox(color=(255, 255, 255)))
+            style.draw(frame, x1, y1, x2, y2, f"{class_name} {int(confidence)}%")
 
     # Write the processed frame to the output
     writer.write(frame)
 
     return frame, False
-
-
 
 
 def finalize_processing(cap, writer):
