@@ -3,6 +3,7 @@ import json
 import cv2
 
 from box_style import DashedBox, Ellipse, RoundedBox
+from logo import overlay_logo
 
 
 def init_video_processing(input_path: str, output_path: str):
@@ -32,7 +33,7 @@ def init_video_processing(input_path: str, output_path: str):
     return cap, writer
 
 
-def process_frame(cap, model, writer, class_names):
+def process_frame(cap, model, writer, class_names, logo_path=None):
     """
     Processes a single video frame with category-based bounding box styles.
 
@@ -75,6 +76,10 @@ def process_frame(cap, model, writer, class_names):
             # Determine the style and draw
             style = category_styles.get(category, RoundedBox(color=(255, 255, 255)))
             style.draw(frame, x1, y1, x2, y2, f"{class_name} {int(confidence)}%")
+
+    # Add the logo if a path is provided
+    if logo_path:
+        frame = overlay_logo(frame, logo_path)
 
     # Write the processed frame to the output
     writer.write(frame)

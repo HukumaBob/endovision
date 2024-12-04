@@ -42,6 +42,11 @@ class VideoProcessorUI(QMainWindow):
         output_group = self.create_group_box("Output", [
             self.create_file_row("Specify the output file path...", "output_path", "Save As...", "*.mp4"),
         ])
+        
+        # Добавление секции для выбора логотипа
+        logo_group = self.create_group_box("Logo", [
+            self.create_file_row("Select a logo file...", "logo_path", "Choose Logo", "*.png")
+        ])        
 
         # Start processing button
         self.process_btn = QPushButton("Start Processing")
@@ -60,6 +65,7 @@ class VideoProcessorUI(QMainWindow):
         self.status_label.setStyleSheet("color: green; font-size: 12px;")
 
         # Add components to the main layout
+        main_layout.addWidget(logo_group)        
         main_layout.addWidget(input_group)
         main_layout.addWidget(output_group)
         main_layout.addWidget(self.process_btn)
@@ -140,6 +146,7 @@ class VideoProcessorUI(QMainWindow):
         input_path = self.input_path.text()
         model_path = self.model_path.text()
         output_path = self.output_path.text()
+        logo_path = self.logo_path.text() if self.logo_path else None
 
         if not input_path or not model_path or not output_path:
             self.status_label.setText("Error: Please fill in all required fields!")
@@ -148,6 +155,10 @@ class VideoProcessorUI(QMainWindow):
         if not self.class_names:
             self.status_label.setText("Error: Corresponding JSON file not found!")
             return
+        
+        if not logo_path or not os.path.exists(logo_path):
+            self.status_label.setText("Error: Logo file not found or not selected!")
+            return        
 
         self.model = YOLO(model_path)
 
@@ -165,7 +176,8 @@ class VideoProcessorUI(QMainWindow):
         """
         Processes a single video frame, updates the UI, and handles video completion.
         """
-        frame, finished = process_frame(self.cap, self.model, self.writer, self.class_names)
+        logo_path = self.logo_path.text() if self.logo_path else None
+        frame, finished = process_frame(self.cap, self.model, self.writer, self.class_names, logo_path=logo_path)
         if finished:
             self.timer.stop()
             finalize_processing(self.cap, self.writer)
