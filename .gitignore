@@ -162,4 +162,5 @@ cython_debug/
 #.idea/
 input
 output
+assets
 video_processing_live.py
