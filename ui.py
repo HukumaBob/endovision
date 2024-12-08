@@ -1,12 +1,13 @@
+import cv2
+import os
 from PyQt5.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QGroupBox, QWidget, QMainWindow, QFileDialog
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPixmap, QImage
 from video_processor import init_video_processing, process_frame, finalize_processing, load_classes
+from collections import deque
 from ultralytics import YOLO
-import cv2
-import os
 
 
 class VideoProcessorUI(QMainWindow):
@@ -26,6 +27,7 @@ class VideoProcessorUI(QMainWindow):
         self.model = None
         self.output_file_path = None
         self.class_names = None
+        self.frame_buffer = deque(maxlen=50)  # Буфер для последних 50 кадров
 
     def init_ui(self):
         """Initializes the user interface."""
@@ -42,16 +44,20 @@ class VideoProcessorUI(QMainWindow):
         output_group = self.create_group_box("Output", [
             self.create_file_row("Specify the output file path...", "output_path", "Save As...", "*.mp4"),
         ])
-        
         # Добавление секции для выбора логотипа
         logo_group = self.create_group_box("Logo", [
             self.create_file_row("Select a logo file...", "logo_path", "Choose Logo", "*.png")
-        ])        
+        ])            
 
         # Start processing button
         self.process_btn = QPushButton("Start Processing")
         self.process_btn.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.process_btn.clicked.connect(self.start_processing)
+
+        # Freeze button
+        self.freeze_btn = QPushButton("Freeze")
+        self.freeze_btn.setStyleSheet("font-size: 14px;")
+        self.freeze_btn.clicked.connect(self.freeze_frame)
 
         # Video preview label
         self.video_label = QLabel("Video Preview", self)
@@ -59,21 +65,71 @@ class VideoProcessorUI(QMainWindow):
         self.video_label.setStyleSheet("background-color: black;")
         self.video_label.setFixedSize(640, 480)
 
+        # Sharpest frame preview label
+        self.sharpest_label = QLabel("Sharpest Frame", self)
+        self.sharpest_label.setAlignment(Qt.AlignCenter)
+        self.sharpest_label.setStyleSheet("background-color: black;")
+        self.sharpest_label.setFixedSize(320, 240)
+
         # Status label
         self.status_label = QLabel("", self)
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet("color: green; font-size: 12px;")
 
         # Add components to the main layout
-        main_layout.addWidget(logo_group)        
+        main_layout.addWidget(logo_group)   
         main_layout.addWidget(input_group)
         main_layout.addWidget(output_group)
         main_layout.addWidget(self.process_btn)
+        main_layout.addWidget(self.freeze_btn)
         main_layout.addWidget(self.video_label)
+        main_layout.addWidget(self.sharpest_label)
         main_layout.addWidget(self.status_label)
 
         self.setCentralWidget(main_widget)
 
+    def freeze_frame(self):
+        """
+        Computes the sharpest frame from the buffer and displays it.
+        """
+        if not self.frame_buffer:
+            self.status_label.setText("Buffer is empty! No frames to analyze.")
+            return
+
+        sharpest_frame = self.find_sharpest_frame(self.frame_buffer)
+        if sharpest_frame is not None:
+            # Convert and display the sharpest frame
+            rgb_frame = cv2.cvtColor(sharpest_frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb_frame.shape
+            bytes_per_line = ch * w
+            q_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(q_image)
+            self.sharpest_label.setPixmap(pixmap)
+            self.status_label.setText("Sharpest frame displayed!")
+        else:
+            self.status_label.setText("Unable to find the sharpest frame.")
+
+    @staticmethod
+    def calculate_sharpness(image):
+        """
+        Calculates the sharpness of an image using the variance of the Laplacian.
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        return laplacian_var
+
+    def find_sharpest_frame(self, frames):
+        """
+        Finds the sharpest frame in a list of frames.
+        """
+        max_sharpness = 0
+        sharpest_frame = None
+        for frame in frames:
+            sharpness = self.calculate_sharpness(frame)
+            if sharpness > max_sharpness:
+                max_sharpness = sharpness
+                sharpest_frame = frame
+        return sharpest_frame
     def create_group_box(self, title, rows):
         """
         Creates a group box with a given title and rows of widgets.
@@ -184,7 +240,10 @@ class VideoProcessorUI(QMainWindow):
             self.status_label.setText(f"Processing complete! File saved at: {self.output_path.text()}")
             return
 
-        # Update video preview
+        # Add frame to buffer
+        self.frame_buffer.append(frame)
+
+        # Run frame processing (if needed)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
