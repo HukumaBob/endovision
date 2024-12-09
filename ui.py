@@ -1,10 +1,10 @@
-import os
-from collections import deque
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QGroupBox, QWidget, QMainWindow, QFileDialog
+    QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QGroupBox, QWidget, QMainWindow, QFileDialog, QScrollArea, QFrame
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPixmap, QImage
+import os
+from collections import deque
 import cv2
 
 from video_processing import init_video_processing, process_frame, finalize_processing
@@ -12,79 +12,97 @@ from frame_analysis import find_sharpest_frame
 from model_handler import load_model, find_json_for_model, load_classes
 
 
+
 class VideoProcessorUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Video Processing with YOLO")
-        self.setGeometry(200, 200, 800, 600)
+        self.setGeometry(200, 200, 1000, 600)
         self.init_ui()
 
         self.timer = QTimer()
         self.cap = None
         self.model = None
         self.writer = None
-        self.frame_buffer = deque(maxlen=50)
+        self.frame_buffer = deque(maxlen=5)
         self.class_names = None
+        self.frozen_frames = []  # Список замороженных кадров
+        self.default_logo_path = "assets/default_logo.png"  # Укажите ваш путь
+
 
     def init_ui(self):
         """Initializes the user interface."""
         main_widget = QWidget(self)
-        main_layout = QVBoxLayout(main_widget)
+        main_layout = QHBoxLayout(main_widget)
 
-        # Input files section
+        # Left section (controls and video)
+        left_layout = QVBoxLayout()
         input_group = self.create_group_box("Input Files", [
             self.create_file_row("Select a video file...", "input_path", "Choose Video", "*.mp4 *.mpg *.avi *.webm"),
             self.create_file_row("Select a YOLO model file...", "model_path", "Choose Model", "*.pt"),
         ])
-
-        # Output files section
         output_group = self.create_group_box("Output", [
             self.create_file_row("Specify the output file path...", "output_path", "Save As...", "*.mp4"),
         ])
-
-        # Logo files section
         logo_group = self.create_group_box("Logo", [
             self.create_file_row("Select a logo file...", "logo_path", "Choose Logo", "*.png")
-        ])            
+        ])
 
-        # Start processing button
         self.process_btn = QPushButton("Start Processing")
         self.process_btn.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.process_btn.clicked.connect(self.start_processing)
 
-        # Freeze button
         self.freeze_btn = QPushButton("Freeze")
         self.freeze_btn.setStyleSheet("font-size: 14px;")
         self.freeze_btn.clicked.connect(self.freeze_frame)
 
-        # Video preview label
         self.video_label = QLabel("Video Preview", self)
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setStyleSheet("background-color: black;")
         self.video_label.setFixedSize(640, 480)
+        self.video_label.mouseDoubleClickEvent = self.expand_video_to_fullscreen
 
-        # Sharpest frame preview label
-        self.sharpest_label = QLabel("Sharpest Frame", self)
-        self.sharpest_label.setAlignment(Qt.AlignCenter)
-        self.sharpest_label.setStyleSheet("background-color: black;")
-        self.sharpest_label.setFixedSize(320, 240)
-
-        # Status label
         self.status_label = QLabel("", self)
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet("color: green; font-size: 12px;")
 
-        # Add components to the main layout
-        main_layout.addWidget(logo_group)   
-        main_layout.addWidget(input_group)
-        main_layout.addWidget(output_group)
-        main_layout.addWidget(self.process_btn)
-        main_layout.addWidget(self.freeze_btn)
-        main_layout.addWidget(self.video_label)
-        main_layout.addWidget(self.sharpest_label)
-        main_layout.addWidget(self.status_label)
+        left_layout.addWidget(input_group)
+        left_layout.addWidget(output_group)
+        left_layout.addWidget(logo_group)
+        left_layout.addWidget(self.process_btn)
+        left_layout.addWidget(self.freeze_btn)
+        left_layout.addWidget(self.video_label)
+        left_layout.addWidget(self.status_label)
 
+        # Right section (frozen frames)
+        right_layout = QVBoxLayout()
+        frozen_group = QGroupBox("Frozen Frames")
+        frozen_layout = QVBoxLayout()
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area_content = QWidget()
+        self.scroll_area_layout = QVBoxLayout(self.scroll_area_content)
+        self.scroll_area.setWidget(self.scroll_area_content)
+
+        frozen_layout.addWidget(self.scroll_area)
+        frozen_group.setLayout(frozen_layout)
+        right_layout.addWidget(frozen_group)
+
+        # Add layouts to the main layout
+        main_layout.addLayout(left_layout)
+        main_layout.addLayout(right_layout)
         self.setCentralWidget(main_widget)
+
+    def expand_video_to_fullscreen(self, event):
+        """Expands the video preview to fullscreen."""
+        fullscreen_window = QLabel()
+        fullscreen_window.setPixmap(self.video_label.pixmap())
+        fullscreen_window.setAlignment(Qt.AlignCenter)
+        fullscreen_window.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+        fullscreen_window.setStyleSheet("background-color: black;")
+        fullscreen_window.showFullScreen()
+        fullscreen_window.mouseDoubleClickEvent = lambda _: fullscreen_window.close()
 
     def create_group_box(self, title, rows):
         """
@@ -152,16 +170,44 @@ class VideoProcessorUI(QMainWindow):
                     self.class_names = load_classes(json_path)    
 
     def freeze_frame(self):
+        """Freezes the current frame and adds it to the list of frozen frames."""
         if not self.frame_buffer:
             self.status_label.setText("Buffer is empty!")
             return
 
         sharpest_frame = find_sharpest_frame(self.frame_buffer)
         if sharpest_frame is not None:
-            self.display_frame(self.sharpest_label, sharpest_frame)
-            self.status_label.setText("Sharpest frame displayed!")
+            self.add_frozen_frame(sharpest_frame)
+            self.status_label.setText("Sharpest frame added!")
         else:
             self.status_label.setText("No sharp frame found.")
+
+    def add_frozen_frame(self, frame):
+        """Добавляет замороженный кадр в прокручиваемый список."""
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_frame.shape
+        bytes_per_line = ch * w
+        q_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(q_image)
+
+        # Получаем 90% фактической ширины видимой области скролла
+        scroll_width = self.scroll_area.viewport().width()
+        frame_width = int(0.95 * scroll_width)
+
+        # Создаем QLabel для кадра
+        frame_label = QLabel()
+        frame_label.setPixmap(pixmap.scaled(frame_width, frame_width * h // w, Qt.KeepAspectRatio))
+        frame_label.setAlignment(Qt.AlignCenter)
+        frame_label.setFrameShape(QFrame.Box)
+
+        # Добавляем кадр в компоновку и список
+        self.scroll_area_layout.addWidget(frame_label)
+        self.frozen_frames.append(frame)
+
+        # Прокручиваем скролл вниз после обновления интерфейса
+        QTimer.singleShot(5, lambda: self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum()
+        ))
 
     def display_frame(self, label, frame):
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -176,6 +222,9 @@ class VideoProcessorUI(QMainWindow):
         model_path = self.model_path.text()
         output_path = self.output_path.text()
         logo_path = self.logo_path.text()
+
+        if not logo_path and os.path.exists(self.default_logo_path):
+            logo_path = self.default_logo_path        
 
         if not input_path or not model_path or not output_path:
             self.status_label.setText("Fill in all required fields!")
