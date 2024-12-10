@@ -19,7 +19,14 @@ class VideoProcessorUI(QMainWindow):
         super().__init__()
         self.setWindowTitle("Video Processing with YOLO")
         self.setGeometry(200, 200, 1000, 600)
+        
+        # Инициализация текущей темы
+        self.current_theme = "light"  # По умолчанию светлая тема
+        settings = ConfigHandler.load_settings()
+        self.current_theme = settings.get("theme", "light")  # Загрузка сохраненной темы
+        
         self.init_ui()
+        self.apply_theme()  # Применить тему при старте приложения
 
         self.timer = QTimer()
         self.cap = None
@@ -29,7 +36,7 @@ class VideoProcessorUI(QMainWindow):
         self.class_names = None
         self.frozen_frames = []  # Список замороженных кадров
         self.default_logo_path = "assets/default_logo.png"  # Укажите ваш путь
-    
+
     def init_ui(self):
         """Initializes the user interface."""
         # Создание основного виджета и главного макета
@@ -86,6 +93,11 @@ class VideoProcessorUI(QMainWindow):
         self.freeze_btn.setStyleSheet("font-size: 14px;")
         self.freeze_btn.clicked.connect(self.freeze_frame)
 
+        # Кнопка переключения темы
+        self.theme_btn = QPushButton("Switch to Dark Mode")
+        self.theme_btn.setStyleSheet("font-size: 14px;")
+        self.theme_btn.clicked.connect(self.toggle_theme)
+
         # Превью видео
         self.video_label = QLabel("Video Preview", self)
         self.video_label.setAlignment(Qt.AlignCenter)
@@ -110,6 +122,7 @@ class VideoProcessorUI(QMainWindow):
         left_layout.addWidget(logo_group)
         left_layout.addWidget(self.process_btn)
         left_layout.addWidget(self.freeze_btn)
+        left_layout.addWidget(self.theme_btn)
         left_layout.addWidget(self.video_label)
         left_layout.addWidget(self.status_label)
 
@@ -132,6 +145,51 @@ class VideoProcessorUI(QMainWindow):
         main_layout.addLayout(left_layout)
         main_layout.addLayout(right_layout)
         self.setCentralWidget(main_widget)
+
+    def toggle_theme(self):
+        """Switches between Light Mode and Dark Mode."""
+        self.current_theme = "dark" if self.current_theme == "light" else "light"
+        self.apply_theme()
+        self.theme_btn.setText("Switch to Light Mode" if self.current_theme == "dark" else "Switch to Dark Mode")
+
+        # Сохранить текущую тему в настройках
+        settings = ConfigHandler.load_settings()
+        settings["theme"] = self.current_theme
+        ConfigHandler.save_settings(settings)
+
+    def apply_theme(self):
+        """Applies the current theme to the application."""
+        if self.current_theme == "dark":
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #2E2E2E;
+                    color: #FFFFFF;
+                }
+                QLineEdit, QPushButton {
+                    background-color: #3C3C3C;
+                    border: 1px solid #5A5A5A;
+                    color: #FFFFFF;
+                }
+                QLabel {
+                    color: #FFFFFF;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #FFFFFF;
+                    color: #000000;
+                }
+                QLineEdit, QPushButton {
+                    background-color: #F0F0F0;
+                    border: 1px solid #D0D0D0;
+                    color: #000000;
+                }
+                QLabel {
+                    color: #000000;
+                }
+            """)
+
 
     def expand_video_to_fullscreen(self, event):
         """Expands the video preview to fullscreen."""
