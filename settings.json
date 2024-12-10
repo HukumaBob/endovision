@@ -1,0 +1,8 @@
+{
+    "input_folder": "/home/hukuma/Documents/Dev/endovision/input",
+    "models_folder": "/home/hukuma/Documents/Dev/endovision/model",
+    "output_folder": "/media/hukuma/Documents/Dev/endovision/output",
+    "last_video_path": "/media/hukuma/Documents/Dev/endovision/input/Lilit Arutynyan, 35 \u043b.mpg",
+    "last_model_path": "/media/hukuma/Documents/Dev/endovision/model/egds.pt",
+    "last_logo_path": "/media/hukuma/Documents/Dev/endovision/assets/default_logo.png"
+}
